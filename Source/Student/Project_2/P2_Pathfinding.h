@@ -59,7 +59,7 @@ public:
     void AddOnList(onList type, Node node);
     void DeleteOnList(onList type, Node node);
     void SetPath(WaypointList& list, const Node& goalNode
-        , const Node& startNode);
+        , const Node& startNode, bool enableRubberbanding);
     bool isItMovableGrid(const GridPos& pos);
     void InitializeNodes();
 
