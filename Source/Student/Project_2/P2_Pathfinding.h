@@ -34,11 +34,23 @@ public:
         CLOSED,
     };
 
+    enum class NeighborKind
+    {
+	    UP,
+        DOWN,
+        RIGHT,
+        LEFT,
+        UPLEFT,
+        UPRIGHT,
+        DOWNLEFT,
+        DOWNRIGHT
+    };
+
     struct Node
     {
         GridPos pos;
         int xParent, yParent;
-        float cost;
+        double cost;
         float given;
         onList list;
 
@@ -52,9 +64,10 @@ public:
     };
 
     Node SortOpenListAndPop();
-    float HeuristicCost(Heuristic setting, GridPos curr, GridPos target);
+    double HeuristicCost(Heuristic setting, GridPos curr, GridPos target);
     double sqrt2 = sqrt(2);
-    std::vector<GridPos> GetNeighboringChildPoses(GridPos parentPos);
+    std::vector<GridPos> GetNeighboringChildPoses(GridPos parentPos
+        , std::vector<NeighborKind>& neighborKinds);
     void SetColor();
     void AddOnList(onList type, Node node);
     void DeleteOnList(onList type, Node node);

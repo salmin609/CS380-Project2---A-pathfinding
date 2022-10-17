@@ -87,55 +87,63 @@ PathResult AStarPather::compute_path(PathRequest& request)
 	*/
 
 	// WRITE YOUR CODE HERE
-	GridPos startPosInGrid = terrain->get_grid_position(request.start);
-	GridPos goalPosInGrid = terrain->get_grid_position(request.goal);
+	//GridPos startPosInGrid = terrain->get_grid_position(request.start);
+	//GridPos goalPosInGrid = terrain->get_grid_position(request.goal);
 	//if(ogStart != startPosInGrid || ogGoal != goalPosInGrid)
-	if (result != PathResult::PROCESSING)
-		InitializeNodes();
+	
 
 
 	// Just sample code, safe to delete
 	GridPos start = terrain->get_grid_position(request.start);
 	GridPos goal = terrain->get_grid_position(request.goal);
 
-	Node startNode = nodes[start.col][start.row];
 
-	//Push startNode once
-	if (startNode.list == onList::NONE)
+	if (result != PathResult::PROCESSING)
+	{
+		InitializeNodes();
+
+		Node startNode = nodes[start.col][start.row];
+
 		AddOnList(onList::OPEN, startNode);
-
-
-
+	}
+	
 	while (!openList.empty())
 	{
 		Node parentNode = SortOpenListAndPop();
 
 		if (parentNode.pos == goal)
 		{
+			Node startNode = nodes[start.col][start.row];
 			SetPath(request.path, parentNode, startNode, request.settings.rubberBanding);
 			result = PathResult::COMPLETE;
 			return result;
 		}
 
 		//Find neighboring child nodes
-		std::vector<GridPos> neighboringGrids = GetNeighboringChildPoses(parentNode.pos);
+		std::vector<NeighborKind> neighborKinds;
+		std::vector<GridPos> neighboringGrids = GetNeighboringChildPoses(parentNode.pos, neighborKinds);
 
 		const size_t vecSize = neighboringGrids.size();
 		for (int i = 0; i < vecSize; ++i)
 		{
 			const GridPos childPos = neighboringGrids[i];
+			const NeighborKind kind = neighborKinds[i];
 
 			Node childNode = nodes[childPos.col][childPos.row];
 
 			//cost of child node = parentNode cost + heuristic
-			childNode.given = parentNode.given + 1.f;
-			//childNode.given = parentNode.cost;
+
+			if(kind == NeighborKind::DOWN || kind == NeighborKind::UP || kind == NeighborKind::LEFT || kind == NeighborKind::RIGHT)
+				childNode.given = parentNode.given + 1.f;
+			else
+				childNode.given = parentNode.given + static_cast<float>(sqrt2);
+
 			childNode.cost = childNode.given +
 				HeuristicCost(request.settings.heuristic, childNode.pos, goal) * request.settings.weight;
 			childNode.xParent = parentNode.pos.row;
 			childNode.yParent = parentNode.pos.col;
 
-			const onList& childNodeStatus = childNode.list;
+ 			const onList& childNodeStatus = childNode.list;
 
 			//Child node is not on the list
 			if (childNodeStatus == onList::NONE)
@@ -197,7 +205,7 @@ AStarPather::Node AStarPather::SortOpenListAndPop()
 	return frontNode;
 }
 
-float AStarPather::HeuristicCost(Heuristic setting, GridPos curr, GridPos target)
+double AStarPather::HeuristicCost(Heuristic setting, GridPos curr, GridPos target)
 {
 	switch (setting)
 	{
@@ -206,7 +214,7 @@ float AStarPather::HeuristicCost(Heuristic setting, GridPos curr, GridPos target
 		const int xDiff = abs(curr.row - target.row);
 		const int yDiff = abs(curr.col - target.col);
 
-		const float firstVal = std::min(xDiff, yDiff) * static_cast<float>(sqrt2);
+		const double firstVal = std::min(xDiff, yDiff) * sqrt2;
 		const int secondVal = std::max(xDiff, yDiff);
 		const int thirdVal = std::min(xDiff, yDiff);
 
@@ -217,21 +225,21 @@ float AStarPather::HeuristicCost(Heuristic setting, GridPos curr, GridPos target
 		const int xDiff = abs(curr.row - target.row);
 		const int yDiff = abs(curr.col - target.col);
 
-		return static_cast<float>(std::max(xDiff, yDiff));
+		return std::max(xDiff, yDiff);
 	}
 	case Heuristic::MANHATTAN:
 	{
 		const int xDiff = abs(curr.row - target.row);
 		const int yDiff = abs(curr.col - target.col);
 
-		return static_cast<float>(xDiff + yDiff);
+		return xDiff + yDiff;
 	}
 	case Heuristic::EUCLIDEAN:
 	{
 		const int xDiff = abs(curr.row - target.row);
 		const int yDiff = abs(curr.col - target.col);
 
-		return static_cast<float>(sqrt(xDiff * xDiff + yDiff * yDiff));
+		return sqrt(xDiff * xDiff + yDiff * yDiff);
 	}
 	case Heuristic::NUM_ENTRIES:
 	default:
@@ -240,25 +248,11 @@ float AStarPather::HeuristicCost(Heuristic setting, GridPos curr, GridPos target
 
 }
 
-std::vector<GridPos> AStarPather::GetNeighboringChildPoses(GridPos parentPos)
+std::vector<GridPos> AStarPather::GetNeighboringChildPoses(GridPos parentPos, std::vector<NeighborKind>& neighborKinds)
 {
 	std::vector<GridPos> result;
 
-	//Left
-	GridPos targetPos{ parentPos.row - 1, parentPos.col };
-
-	const bool isLeftMovable = isItMovableGrid(targetPos);
-
-	if (isLeftMovable)
-		result.push_back(targetPos);
-
-	//Right
-	targetPos = GridPos{ parentPos.row + 1, parentPos.col };
-
-	const bool isRightMovable = isItMovableGrid(targetPos);
-
-	if (isRightMovable)
-		result.push_back(targetPos);
+	GridPos targetPos;
 
 	//Up
 	targetPos = GridPos{ parentPos.row, parentPos.col + 1 };
@@ -266,7 +260,10 @@ std::vector<GridPos> AStarPather::GetNeighboringChildPoses(GridPos parentPos)
 	const bool isUpMovable = isItMovableGrid(targetPos);
 
 	if (isUpMovable)
+	{
 		result.push_back(targetPos);
+		neighborKinds.push_back(NeighborKind::UP);
+	}
 
 	//Down
 	targetPos = GridPos{ parentPos.row, parentPos.col - 1 };
@@ -274,7 +271,34 @@ std::vector<GridPos> AStarPather::GetNeighboringChildPoses(GridPos parentPos)
 	const bool isDownMovable = isItMovableGrid(targetPos);
 
 	if (isDownMovable)
+	{
 		result.push_back(targetPos);
+		neighborKinds.push_back(NeighborKind::DOWN);
+	}
+
+	//Left
+	targetPos = GridPos{ parentPos.row - 1, parentPos.col };
+
+	const bool isLeftMovable = isItMovableGrid(targetPos);
+
+	if (isLeftMovable)
+	{
+		result.push_back(targetPos);
+		neighborKinds.push_back(NeighborKind::LEFT);
+	}
+
+	//Right
+	targetPos = GridPos{ parentPos.row + 1, parentPos.col };
+
+	const bool isRightMovable = isItMovableGrid(targetPos);
+
+	if (isRightMovable)
+	{
+		result.push_back(targetPos);
+		neighborKinds.push_back(NeighborKind::RIGHT);
+	}
+
+
 
 	//Diagonal
 	//UpLeft
@@ -286,7 +310,10 @@ std::vector<GridPos> AStarPather::GetNeighboringChildPoses(GridPos parentPos)
 		const bool isLeftUpMovable = isItMovableGrid(targetPos);
 
 		if (isLeftUpMovable)
+		{
 			result.push_back(targetPos);
+			neighborKinds.push_back(NeighborKind::UPLEFT);
+		}
 	}
 
 	//UpRight
@@ -297,7 +324,10 @@ std::vector<GridPos> AStarPather::GetNeighboringChildPoses(GridPos parentPos)
 		const bool isRightUpMovable = isItMovableGrid(targetPos);
 
 		if (isRightUpMovable)
+		{
 			result.push_back(targetPos);
+			neighborKinds.push_back(NeighborKind::UPRIGHT);
+		}
 	}
 
 	//DownLeft
@@ -308,7 +338,10 @@ std::vector<GridPos> AStarPather::GetNeighboringChildPoses(GridPos parentPos)
 		const bool isLeftDownMovable = isItMovableGrid(targetPos);
 
 		if (isLeftDownMovable)
+		{
 			result.push_back(targetPos);
+			neighborKinds.push_back(NeighborKind::DOWNLEFT);
+		}
 	}
 
 	//DownRight
@@ -319,7 +352,10 @@ std::vector<GridPos> AStarPather::GetNeighboringChildPoses(GridPos parentPos)
 		const bool isRightDownMovable = isItMovableGrid(targetPos);
 
 		if (isRightDownMovable)
+		{
 			result.push_back(targetPos);
+			neighborKinds.push_back(NeighborKind::DOWNRIGHT);
+		}
 	}
 
 	return result;
