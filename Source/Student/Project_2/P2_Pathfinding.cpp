@@ -86,21 +86,13 @@ PathResult AStarPather::compute_path(PathRequest& request)
 			IMPOSSIBLE - a path from start to goal does not exist, do not add start position to path
 	*/
 
-	// WRITE YOUR CODE HERE
-	//GridPos startPosInGrid = terrain->get_grid_position(request.start);
-	//GridPos goalPosInGrid = terrain->get_grid_position(request.goal);
-	//if(ogStart != startPosInGrid || ogGoal != goalPosInGrid)
-	
-
-
-	// Just sample code, safe to delete
-	GridPos start = terrain->get_grid_position(request.start);
-	GridPos goal = terrain->get_grid_position(request.goal);
-
-
-	if (result != PathResult::PROCESSING)
+	//if (result != PathResult::PROCESSING)
+	if(request.newRequest)
 	{
 		InitializeNodes();
+
+		start = terrain->get_grid_position(request.start);
+		goal = terrain->get_grid_position(request.goal);
 
 		Node startNode = nodes[start.col][start.row];
 
@@ -116,8 +108,7 @@ PathResult AStarPather::compute_path(PathRequest& request)
 			Node startNode = nodes[start.col][start.row];
 			SetPath(request.path, parentNode, startNode, request.settings.rubberBanding,
 				request.settings.smoothing);
-			result = PathResult::COMPLETE;
-			return result;
+			return PathResult::COMPLETE;
 		}
 
 		//Find neighboring child nodes
@@ -180,16 +171,13 @@ PathResult AStarPather::compute_path(PathRequest& request)
 		AddOnList(onList::CLOSED, parentNode);
 
 		if(request.settings.debugColoring)
-			SetColor();
+			SetOpenClosedGridsColor();
 
 		if (request.settings.singleStep)
-		{
-			result = PathResult::PROCESSING;
-			return result;
-		}
+			return PathResult::PROCESSING;
 	}
-	result = PathResult::IMPOSSIBLE;
-	return result;
+
+	return PathResult::IMPOSSIBLE;
 }
 
 AStarPather::Node AStarPather::SortOpenListAndPop()
@@ -205,14 +193,16 @@ AStarPather::Node AStarPather::SortOpenListAndPop()
 	return frontNode;
 }
 
-double AStarPather::HeuristicCost(Heuristic setting, GridPos curr, GridPos target)
+double AStarPather::HeuristicCost(const Heuristic& setting, const GridPos& curr, const GridPos& target) const
 {
 	switch (setting)
 	{
 	case Heuristic::OCTILE:
 	{
-		const int xDiff = abs(curr.row - target.row);
-		const int yDiff = abs(curr.col - target.col);
+		int xDiff, yDiff;
+
+		curr.row > target.row ? xDiff = curr.row - target.row : xDiff = target.row - curr.row;
+		curr.col > target.col ? yDiff = curr.col - target.col : yDiff = target.col - curr.col;
 
 		const double firstVal = std::min(xDiff, yDiff) * sqrt2;
 		const int secondVal = std::max(xDiff, yDiff);
@@ -222,22 +212,28 @@ double AStarPather::HeuristicCost(Heuristic setting, GridPos curr, GridPos targe
 	}
 	case Heuristic::CHEBYSHEV:
 	{
-		const int xDiff = abs(curr.row - target.row);
-		const int yDiff = abs(curr.col - target.col);
+		int xDiff, yDiff;
+
+		curr.row > target.row ? xDiff = curr.row - target.row : xDiff = target.row - curr.row;
+		curr.col > target.col ? yDiff = curr.col - target.col : yDiff = target.col - curr.col;
 
 		return std::max(xDiff, yDiff);
 	}
 	case Heuristic::MANHATTAN:
 	{
-		const int xDiff = abs(curr.row - target.row);
-		const int yDiff = abs(curr.col - target.col);
+		int xDiff, yDiff;
+
+		curr.row > target.row ? xDiff = curr.row - target.row : xDiff = target.row - curr.row;
+		curr.col > target.col ? yDiff = curr.col - target.col : yDiff = target.col - curr.col;
 
 		return xDiff + yDiff;
 	}
 	case Heuristic::EUCLIDEAN:
 	{
-		const int xDiff = abs(curr.row - target.row);
-		const int yDiff = abs(curr.col - target.col);
+		int xDiff, yDiff;
+
+		curr.row > target.row ? xDiff = curr.row - target.row : xDiff = target.row - curr.row;
+		curr.col > target.col ? yDiff = curr.col - target.col : yDiff = target.col - curr.col;
 
 		return sqrt(xDiff * xDiff + yDiff * yDiff);
 	}
@@ -248,7 +244,7 @@ double AStarPather::HeuristicCost(Heuristic setting, GridPos curr, GridPos targe
 
 }
 
-std::vector<GridPos> AStarPather::GetNeighboringChildPoses(GridPos parentPos, std::vector<NeighborKind>& neighborKinds)
+std::vector<GridPos> AStarPather::GetNeighboringChildPoses(const GridPos& parentPos, std::vector<NeighborKind>& neighborKinds)
 {
 	std::vector<GridPos> result;
 
@@ -296,8 +292,6 @@ std::vector<GridPos> AStarPather::GetNeighboringChildPoses(GridPos parentPos, st
 		neighborKinds.push_back(NeighborKind::RIGHT);
 	}
 
-
-
 	//Diagonal
 	//UpLeft
 	//Should check up / left movable
@@ -305,9 +299,7 @@ std::vector<GridPos> AStarPather::GetNeighboringChildPoses(GridPos parentPos, st
 	{
 		targetPos = GridPos{ parentPos.row - 1, parentPos.col + 1 };
 
-		const bool isLeftUpMovable = isItMovableGrid(targetPos);
-
-		if (isLeftUpMovable)
+		if (isItMovableGrid(targetPos))
 		{
 			result.push_back(targetPos);
 			neighborKinds.push_back(NeighborKind::UPLEFT);
@@ -319,9 +311,7 @@ std::vector<GridPos> AStarPather::GetNeighboringChildPoses(GridPos parentPos, st
 	{
 		targetPos = GridPos{ parentPos.row + 1, parentPos.col + 1 };
 
-		const bool isRightUpMovable = isItMovableGrid(targetPos);
-
-		if (isRightUpMovable)
+		if (isItMovableGrid(targetPos))
 		{
 			result.push_back(targetPos);
 			neighborKinds.push_back(NeighborKind::UPRIGHT);
@@ -333,9 +323,7 @@ std::vector<GridPos> AStarPather::GetNeighboringChildPoses(GridPos parentPos, st
 	{
 		targetPos = GridPos{ parentPos.row - 1, parentPos.col - 1 };
 
-		const bool isLeftDownMovable = isItMovableGrid(targetPos);
-
-		if (isLeftDownMovable)
+		if (isItMovableGrid(targetPos))
 		{
 			result.push_back(targetPos);
 			neighborKinds.push_back(NeighborKind::DOWNLEFT);
@@ -347,9 +335,7 @@ std::vector<GridPos> AStarPather::GetNeighboringChildPoses(GridPos parentPos, st
 	{
 		targetPos = GridPos{ parentPos.row + 1, parentPos.col - 1 };
 
-		const bool isRightDownMovable = isItMovableGrid(targetPos);
-
-		if (isRightDownMovable)
+		if (isItMovableGrid(targetPos))
 		{
 			result.push_back(targetPos);
 			neighborKinds.push_back(NeighborKind::DOWNRIGHT);
@@ -359,21 +345,17 @@ std::vector<GridPos> AStarPather::GetNeighboringChildPoses(GridPos parentPos, st
 	return result;
 }
 
-void AStarPather::SetColor()
+void AStarPather::SetOpenClosedGridsColor()
 {
-	for (const auto element : openList)
-	{
+	for (const auto& element : openList)
 		terrain->set_color(element.pos.row, element.pos.col, Color(0.f, 0.f, 1.f));
-	}
 
-	for (const auto element : closedList)
-	{
+	for (const auto& element : closedList)
 		terrain->set_color(element.pos.row, element.pos.col, Color(1.f, 1.f, 0.f));
-	}
 
 }
 
-void AStarPather::AddOnList(onList type, Node node)
+void AStarPather::AddOnList(const onList& type, Node node)
 {
 	node.list = type;
 	nodes[node.pos.col][node.pos.row] = node;
@@ -384,16 +366,12 @@ void AStarPather::AddOnList(onList type, Node node)
 		closedList.push_back(node);
 }
 
-void AStarPather::DeleteOnList(onList type, Node node)
+void AStarPather::DeleteOnList(const onList& type, Node node)
 {
 	if (type == onList::OPEN)
-	{
 		openList.remove(node);
-	}
 	else if (type == onList::CLOSED)
-	{
 		closedList.remove(node);
-	}
 
 	nodes[node.pos.col][node.pos.row].list = onList::NONE;
 }
@@ -452,7 +430,7 @@ void AStarPather::SetPath(WaypointList& list, const Node& goalNode, const Node& 
 	}
 	const size_t listSize = pathLists.size();
 
-	if(!enableSmoothing)
+	if(enableSmoothing == false)
 	{
 		for (size_t i = 0; i < listSize; ++i)
 		{
@@ -462,40 +440,63 @@ void AStarPather::SetPath(WaypointList& list, const Node& goalNode, const Node& 
 	}
 	else
 	{
+		if(listSize > 2)
+		{
+			for(size_t i = 0; i < listSize - 2; ++i)
+			{
+				Vec3 v1, v2, v3, v4;
 
-		for(size_t i = 0; i < listSize - 2; ++i)
+				v1 = pathLists[i];
+
+				if(i == 0)
+				{
+					v2 = pathLists[i];
+					v3 = pathLists[i + 1];
+					v4 = pathLists[i + 2];
+				}
+				else if(i == listSize - 3)
+				{
+					v2 = pathLists[i + 1];
+					v3 = pathLists[i + 2];
+					v4 = pathLists[i + 2];
+				}
+				else
+				{
+					v2 = pathLists[i + 1];
+					v3 = pathLists[i + 2];
+					v4 = pathLists[i + 3];
+				}
+
+				for(float t = 0.f; t < 1.f; t += 0.25f)
+				{
+					Vec3 val = Vec3::CatmullRom(v1, v2, v3, v4, t);
+
+					list.push_front(val);
+				}
+			}
+		}
+		else if(listSize == 2)
 		{
 			Vec3 v1, v2, v3, v4;
 
-			if(i == 0)
-			{
-				v1 = pathLists[i];
-				v2 = pathLists[i];
-				v3 = pathLists[i + 1];
-				v4 = pathLists[i + 2];
-			}
-			else if(i == listSize - 3)
-			{
-				v1 = pathLists[i];
-				v2 = pathLists[i + 1];
-				v3 = pathLists[i + 2];
-				v4 = pathLists[i + 2];
-			}
-			else
-			{
-				v1 = pathLists[i];
-				v2 = pathLists[i + 1];
-				v3 = pathLists[i + 2];
-				v4 = pathLists[i + 3];
-			}
+			v1 = pathLists[0];
+			v2 = pathLists[0];
+			v3 = pathLists[1];
+			v4 = pathLists[1];
 
-			for(float t = 0.f; t < 1.f; t += 0.25f)
+			for (float t = 0.f; t <= 1.f; t += 0.25f)
 			{
 				Vec3 val = Vec3::CatmullRom(v1, v2, v3, v4, t);
 
 				list.push_front(val);
 			}
 		}
+		else if(listSize == 1)
+		{
+			list.push_front(terrain->get_world_position(goal));
+			list.push_front(terrain->get_world_position(startNode.pos));
+		}
+
 	}
 
 
@@ -523,7 +524,6 @@ void AStarPather::InitializeNodes()
 			nodes[i].resize(mapWidth);
 		}
 	}
-
 
 	for (int i = 0; i < mapHeight; ++i)
 	{

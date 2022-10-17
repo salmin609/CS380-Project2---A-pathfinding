@@ -61,10 +61,11 @@ public:
     };
 
     Node SortOpenListAndPop();
-    double HeuristicCost(Heuristic setting, GridPos curr, GridPos target);
-    std::vector<GridPos> GetNeighboringChildPoses(GridPos parentPos
+    double HeuristicCost(const Heuristic& setting, const GridPos& curr, 
+        const GridPos& target) const;
+    std::vector<GridPos> GetNeighboringChildPoses(const GridPos& parentPos
         , std::vector<NeighborKind>& neighborKinds);
-    void SetColor();
+    void SetOpenClosedGridsColor();
 
     void SetPath(WaypointList& list, const Node& goalNode
         , const Node& startNode, bool enableRubberbanding,
@@ -72,13 +73,13 @@ public:
     bool isItMovableGrid(const GridPos& pos);
     void InitializeNodes();
 
-    void AddOnList(onList type, Node node);
-    void DeleteOnList(onList type, Node node);
+    void AddOnList(const onList& type, Node node);
+    void DeleteOnList(const onList& type, Node node);
 
     std::vector<std::vector<Node>> nodes;
     std::list<Node> openList;
     std::list<Node> closedList;
-    PathResult result = PathResult::COMPLETE;
     double sqrt2 = sqrt(2);
+    GridPos start, goal;
 
 };
