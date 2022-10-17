@@ -489,7 +489,7 @@ void AStarPather::SetPath(WaypointList& list, const Node& goalNode, const Node& 
 				v4 = pathLists[i + 3];
 			}
 
-			for(float t = 0.f; t <= 1.f; t += 0.25f)
+			for(float t = 0.f; t < 1.f; t += 0.25f)
 			{
 				Vec3 val = Vec3::CatmullRom(v1, v2, v3, v4, t);
 
