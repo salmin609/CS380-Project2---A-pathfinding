@@ -58,30 +58,27 @@ public:
         {
             return pos == other.pos;
         }
-
-        //debug
-        //int indexW, indexH;
     };
 
     Node SortOpenListAndPop();
     double HeuristicCost(Heuristic setting, GridPos curr, GridPos target);
-    double sqrt2 = sqrt(2);
     std::vector<GridPos> GetNeighboringChildPoses(GridPos parentPos
         , std::vector<NeighborKind>& neighborKinds);
     void SetColor();
-    void AddOnList(onList type, Node node);
-    void DeleteOnList(onList type, Node node);
+
     void SetPath(WaypointList& list, const Node& goalNode
-        , const Node& startNode, bool enableRubberbanding);
+        , const Node& startNode, bool enableRubberbanding,
+        bool enableSmoothing);
     bool isItMovableGrid(const GridPos& pos);
     void InitializeNodes();
+
+    void AddOnList(onList type, Node node);
+    void DeleteOnList(onList type, Node node);
 
     std::vector<std::vector<Node>> nodes;
     std::list<Node> openList;
     std::list<Node> closedList;
     PathResult result = PathResult::COMPLETE;
-
-    //GridPos ogStart{999, 999};
-    //GridPos ogGoal{ 999, 999 };
+    double sqrt2 = sqrt(2);
 
 };

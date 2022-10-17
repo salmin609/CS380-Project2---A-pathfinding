@@ -114,7 +114,8 @@ PathResult AStarPather::compute_path(PathRequest& request)
 		if (parentNode.pos == goal)
 		{
 			Node startNode = nodes[start.col][start.row];
-			SetPath(request.path, parentNode, startNode, request.settings.rubberBanding);
+			SetPath(request.path, parentNode, startNode, request.settings.rubberBanding,
+				request.settings.smoothing);
 			result = PathResult::COMPLETE;
 			return result;
 		}
@@ -131,7 +132,6 @@ PathResult AStarPather::compute_path(PathRequest& request)
 
 			Node childNode = nodes[childPos.col][childPos.row];
 
-			//cost of child node = parentNode cost + heuristic
 
 			if(kind == NeighborKind::DOWN || kind == NeighborKind::UP || kind == NeighborKind::LEFT || kind == NeighborKind::RIGHT)
 				childNode.given = parentNode.given + 1.f;
@@ -252,10 +252,8 @@ std::vector<GridPos> AStarPather::GetNeighboringChildPoses(GridPos parentPos, st
 {
 	std::vector<GridPos> result;
 
-	GridPos targetPos;
-
 	//Up
-	targetPos = GridPos{ parentPos.row, parentPos.col + 1 };
+	GridPos targetPos = GridPos{parentPos.row, parentPos.col + 1};
 
 	const bool isUpMovable = isItMovableGrid(targetPos);
 
@@ -400,7 +398,8 @@ void AStarPather::DeleteOnList(onList type, Node node)
 	nodes[node.pos.col][node.pos.row].list = onList::NONE;
 }
 
-void AStarPather::SetPath(WaypointList& list, const Node& goalNode, const Node& startNode, bool enableRubberbanding)
+void AStarPather::SetPath(WaypointList& list, const Node& goalNode, const Node& startNode, bool enableRubberbanding,
+	bool enableSmoothing)
 {
 	Node tempNode = goalNode;
 	std::vector<Vec3> pathLists;
@@ -453,11 +452,52 @@ void AStarPather::SetPath(WaypointList& list, const Node& goalNode, const Node& 
 	}
 	const size_t listSize = pathLists.size();
 
-	for (size_t i = 0; i < listSize; ++i)
+	if(!enableSmoothing)
 	{
-		list.push_front(pathLists[i]);
+		for (size_t i = 0; i < listSize; ++i)
+		{
+			list.push_front(pathLists[i]);
+		}
+		list.push_front(terrain->get_world_position(startNode.pos));
 	}
-	list.push_front(terrain->get_world_position(startNode.pos));
+	else
+	{
+
+		for(size_t i = 0; i < listSize - 2; ++i)
+		{
+			Vec3 v1, v2, v3, v4;
+
+			if(i == 0)
+			{
+				v1 = pathLists[i];
+				v2 = pathLists[i];
+				v3 = pathLists[i + 1];
+				v4 = pathLists[i + 2];
+			}
+			else if(i == listSize - 3)
+			{
+				v1 = pathLists[i];
+				v2 = pathLists[i + 1];
+				v3 = pathLists[i + 2];
+				v4 = pathLists[i + 2];
+			}
+			else
+			{
+				v1 = pathLists[i];
+				v2 = pathLists[i + 1];
+				v3 = pathLists[i + 2];
+				v4 = pathLists[i + 3];
+			}
+
+			for(float t = 0.f; t <= 1.f; t += 0.25f)
+			{
+				Vec3 val = Vec3::CatmullRom(v1, v2, v3, v4, t);
+
+				list.push_front(val);
+			}
+		}
+	}
+
 
 }
 
@@ -471,7 +511,6 @@ void AStarPather::InitializeNodes()
 	openList.clear();
 	closedList.clear();
 
-	//const int mapHeight = MAPHEIGHT;
 	const int mapHeight = terrain->get_map_height();
 	const int mapWidth = terrain->get_map_width();
 
@@ -495,14 +534,7 @@ void AStarPather::InitializeNodes()
 			nodes[i][j].cost = 0.f;
 			nodes[i][j].given = 0.f;
 			nodes[i][j].list = onList::NONE;
-
-			GridPos pos{ j, i };
-
-			nodes[i][j].pos = pos;
-
-			//nodes[i][j].indexH = i;
-			//nodes[i][j].indexW = j;
-
+			nodes[i][j].pos = GridPos{j, i};
 		}
 	}
 }
