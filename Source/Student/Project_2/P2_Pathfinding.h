@@ -22,10 +22,6 @@ public:
         It doesn't all need to be in this header and cpp, structure it whatever way
         makes sense to you.
     */
-#define MAPWIDTH 40
-#define MAPHEIGHT 40
-
-
 
     enum class onList
     {
@@ -70,7 +66,7 @@ public:
     void SetPath(WaypointList& list, const Node& goalNode
         , const Node& startNode, bool enableRubberbanding,
         bool enableSmoothing);
-    bool isItMovableGrid(const GridPos& pos);
+    bool isValidGrid(const GridPos& pos);
     void InitializeNodes();
 
     void AddOnList(const onList& type, Node node);
